@@ -1,168 +1,284 @@
 # Study Assistant
 
-一个基于本地大语言模型与 RAG 检索流程构建的算法学习助手。
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-Web%20Framework-green)
+![LangChain](https://img.shields.io/badge/LangChain-RAG-orange)
+![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-purple)
+![Ollama](https://img.shields.io/badge/Ollama-Local%20LLM-black)
 
-当前版本支持在命令行中完成算法题语义检索、题目推荐、错题记录与学习建议生成。系统整体采用本地部署方式，不依赖云端 API，后续可以扩展为 Web 应用、API 服务或 Agent 工具。
+Study Assistant 是一个基于 **RAG架构** 构建的本地算法学习辅助系统。
 
----
+用户可以输入一道新题的题意描述， 系统通过向量检索在 Hot100 中匹配相似题目，再结合本地大语言模型生成知识点判断、原因分析与练习建议， 帮助用户把陌生题目快速映射到高频经典题型。
 
-# 项目简介
+同时，系统也支持题目详情查询、分类推荐与错题统计，用于构建更完整的算法练习与复习流程。
 
-本项目的目标是构建一个面向算法刷题场景的本地学习助手。
-
-用户可以输入一道题目的自然语言描述，系统会通过向量检索找到最相近的题目，并结合本地大语言模型生成知识点判断、原因分析和练习建议。
-
-当前项目已经实现了一套完整的基础 RAG 流程，包括：
-
-* 题库解析
-* 结构化数据构建
-* 向量数据库索引
-* 语义检索
-* LLM 解释生成
-* 错题管理
+整个系统采用 **本地部署** 的方式运行，结合向量检索、RAG 推理和 Web 界面，实现一个完整的算法学习辅助工具。
 
 ---
 
-# 当前已实现功能
+# 系统演示
 
-目前系统支持以下能力：
+【此处加入首页截图】
 
-* 题库解析与结构化存储
-* 基于分类的题目推荐
+页面集成了多个功能模块：
+
+* RAG 语义搜索
+* 题目详情查询
+* 分类推荐练习
 * 错题记录与统计
-* 基于 FAISS 的语义检索
-* 基于本地 LLM 的 RAG 问答解释
-* CLI 命令行交互
 
-示例功能包括：
-
-* 输入题意，查找最相近的 Hot100 题目
-* 返回题目对应的知识点、原因分析和建议练习方向
-* 记录用户错题并进行简单统计
+用户可以通过网页界面直接进行算法学习辅助。
 
 ---
 
-# 技术栈
+# 系统架构
 
-本项目当前使用的主要技术如下：
+采用典型的 **RAG 应用架构**：
 
-* Python 3.10
-* LangChain
-* FAISS
-* Ollama
-* CLI 命令行交互
+```text
+用户输入题意
+      │
+      ▼
+Embedding 向量化
+      │
+      ▼
+FAISS 向量检索
+      │
+      ▼
+候选题目 Top-K
+      │
+      ▼
+LLM 生成分析（RAG）
+```
+
+核心组件：
+
+* **LangChain**：构建 RAG 推理流程
+* **FAISS**：向量数据库，用于语义检索
+* **Ollama**：运行本地大语言模型
+* **FastAPI**：提供 API 服务
+* **Jinja2**：Web 页面模板
 
 ---
 
-# 模块说明
+# 数据集
 
-### parser.py
+当前系统使用 **LeetCode Hot100 题库** 作为检索数据源。
 
-用于解析 Markdown 格式的题库文件，并将原始题目信息转换为结构化 JSON 数据。
+目前数据集包含两种难度的题目类别：
 
-### loader.py
+* Easy
+* Medium
 
-用于加载题库，并提供按照题目编号、类别等条件查询题目的能力。
+每道题目包含以下信息：
 
-### wrong_book.py
+* 题号
+* 标题
+* 难度
+* 题目描述
+* 解题思路
+* Python 示例代码
+* 算法类别
 
-用于管理错题记录，包括添加错题、查看错题以及统计错题情况。
+未来可以扩展：
 
-### documents.py
-
-将结构化题库数据转换为 LangChain 所需的 `Document` 格式，作为后续 RAG 检索的输入。
-
-### vector_store.py
-
-负责构建 FAISS 向量数据库，实现题库的语义向量索引。
-
-### rag.py
-
-实现 RAG 检索与生成逻辑，包括相似题目查找、Prompt 构造以及本地 LLM 输出。
-
-### main.py
-
-当前项目的命令行入口，用于统一调用题库查询、推荐、错题管理和 RAG 问答等功能。
+* Hard 难度题目
+* 更大规模算法题库
+* 多语言解法（Python / Java / C++）
 
 ---
 
-# 运行方式
+# 系统功能
 
-### 1 创建并激活虚拟环境
-
-请根据自己的系统环境创建 Python 3.10 虚拟环境。
-
-### 2 安装依赖
-
-将项目依赖安装到当前环境中。
-
-### 3 准备本地模型
-
-确保本地已经安装并运行 Ollama，并已拉取所需模型。
-
-### 4 构建向量索引
-
-首次运行前，需要先构建题库索引。
-
-### 5 通过 CLI 调用功能
-
-可以通过命令行执行题目查询、推荐或 RAG 问答功能。
+当前版本支持以下能力：
 
 ---
 
-# CLI 使用示例
+# RAG 题意分析
 
-### 语义检索问答
+用户可以输入算法题目的自然语言描述，例如：
 
-```bash
-python main.py --task ask --query "给定数组，找三个数之和等于0"
+```
+给定数组，找到三个数之和为0
 ```
 
-### 查看题目
+系统会进行语义检索，并返回最相似的题目，例如：
 
-```bash
-python main.py --task show_problem --id 1
+```
+LeetCode 15 三数之和
 ```
 
-### 分类推荐
+同时结合本地大模型生成：
 
-```bash
-python main.py --task recommend --category 双指针
-```
+* 知识点分析
+* 解题思路
+* 推荐练习
 
-### 添加错题
+【此处加入 RAG 分析截图】
 
-```bash
-python main.py --task add_wrong --id 15
-```
+---
+
+# 题目详情查询
+
+用户可以查询指定题目的详细信息，包括：
+
+* 题目标题
+* 难度
+* 类别
+* 题目描述
+* 解题思路
+* Python 示例代码
+
+【此处加入题目详情截图】
+
+---
+
+# 分类推荐
+
+用户可以根据 **算法类别** 和 **难度** 进行题目推荐，例如：
+
+* 双指针
+* 哈希
+* 滑动窗口
+
+系统会返回对应类别的题目列表，用于定向练习。
+
+【此处加入分类推荐截图】
+
+---
+
+# 错题管理
+
+系统支持记录用户练习过程中出现错误的题目。
+
+功能包括：
+
+* 加入错题本
+* 查看错题列表
+* 错题类别统计
+
+帮助用户建立自己的 **算法学习记录系统**。
+
+【此处加入错题列表截图】
 
 ---
 
 # 项目结构
 
-```text
+```
 Study_assistant
 │
+├── api
+│   └── app.py                # FastAPI 接口
+│
 ├── core
-│   ├── documents.py
-│   ├── vector_store.py
-│   ├── rag.py
-│   ├── parser.py
-│   ├── loader.py
-│   └── wrong_book.py
+│   ├── loader.py             # 题库加载
+│   ├── parser.py             # Markdown 解析
+│   ├── vector_store.py       # FAISS 向量数据库
+│   ├── rag.py                # RAG 推理逻辑
+│   └── wrong_book.py         # 错题管理
+│
+├── services
+│   └── assistant_service.py  # 业务逻辑封装
+│
+├── web
+│   └── templates
+│       └── index.html        # Web 页面
 │
 ├── data
-│   ├── raw
-│   │   ├── Hot100_Easy.md
-│   │   ├── Hot100_Medium.md
-│   │   └── class.md
-│   │
-│   └── processed
-│       ├── problems.json
-│       ├── categories.json
-│       └── wrong_questions.json
+│   └── processed             # 处理后的题库数据
 │
-└── main.py
+├── main.py                   # CLI 入口
+└── README.md
 ```
+
+---
+
+# 运行方式
+
+## 1 创建虚拟环境 & 安装依赖
+
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+
+## 2 启动本地模型
+
+确保已安装 **Ollama**：
+
+```
+ollama run llama3
+```
+
+或提前下载模型：
+
+```
+ollama pull llama3
+```
+
+
+## 3 启动服务
+
+```
+uvicorn api.app:app --reload
+```
+
+
+## 4 打开网页
+
+浏览器访问：
+
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## 5 API 文档
+
+FastAPI 自动生成接口文档：
+
+```
+http://127.0.0.1:8000/docs
+```
+
+---
+
+# 技术栈
+
+* Python 3.10
+* FastAPI
+* LangChain
+* FAISS
+* Ollama
+* Jinja2
+
+---
+
+# 后续规划
+
+未来可以扩展：
+
+* 更大规模算法题库
+* 支持 Hard 难度题目
+* Agent 自动学习助手
+* 更智能的学习路径推荐
+
+---
+
+# 项目目标
+
+本项目旨在探索 **RAG 技术在算法学习辅助中的应用**。
+
+通过结合：
+
+* 向量检索
+* 本地大语言模型
+* Web 应用
+
+构建一个可扩展的 **算法学习助手系统**。
 
 ---

@@ -2,6 +2,9 @@ from fastapi import FastAPI, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+import json
+from pathlib import Path
+
 
 from services.assistant_service import (
     ask_question,
@@ -16,6 +19,58 @@ from services.assistant_service import (
 app = FastAPI(title="Study Assistant API")
 templates = Jinja2Templates(directory="web/templates")
 
+def load_page_options():
+    problems_path = Path("/Users/ky/PycharmProjects/Study_assistant/data/processed/problems.json")
+    categories_path = Path("/Users/ky/PycharmProjects/Study_assistant/data/processed/categories.json")
+
+    problems = []
+    categories = []
+
+    if problems_path.exists():
+        with open(problems_path, "r", encoding="utf-8") as f:
+            problems = json.load(f)
+
+    if categories_path.exists():
+        with open(categories_path, "r", encoding="utf-8") as f:
+            category_data = json.load(f)
+            categories = list(category_data.keys())
+
+    # 题目按 id 排序，显示更整齐
+    problems = sorted(problems, key=lambda x: x.get("id", 0))
+    categories = sorted(categories)
+
+    return problems, categories
+
+
+def build_page_context(request: Request, **kwargs):
+    problems, categories = load_page_options()
+
+    context = {
+        "request": request,
+        "problems": problems,
+        "categories": categories,
+
+        "ask_result": None,
+        "ask_query": "",
+
+        "problem_result": None,
+        "problem_id": "",
+
+        "recommend_results": None,
+        "recommend_category": "",
+        "recommend_difficulty": "",
+        "recommend_num": 3,
+
+        "add_wrong_result": None,
+        "wrong_id": "",
+
+        "wrong_list": get_wrong_book_list(),
+        "wrong_stats": get_wrong_book_stats(),
+
+    }
+
+    context.update(kwargs)
+    return context
 
 class AskRequest(BaseModel):
     query: str
@@ -39,24 +94,8 @@ def root():
 def home_page(request: Request):
     return templates.TemplateResponse(
         "index.html",
-        {
-            "request": request,
-            "ask_result": None,
-            "ask_query": "",
-            "problem_result": None,
-            "problem_id": "",
-            "recommend_results": None,
-            "recommend_category": "",
-            "recommend_difficulty": "",
-            "recommend_num": 3,
-            "add_wrong_result": None,
-            "wrong_id": "",
-            "wrong_list": get_wrong_book_list(),
-            "wrong_stats": get_wrong_book_stats(),
-            "build_index_result": None,
-        }
+        build_page_context(request)
     )
-
 
 # ----------------------------
 # 网页：RAG问答
@@ -72,28 +111,17 @@ def page_ask(
 
     return templates.TemplateResponse(
         "index.html",
-        {
-            "request": request,
-            "ask_result": result["answer"],
-            "ask_query": query,
-            "problem_result": None,
-            "problem_id": "",
-            "recommend_results": None,
-            "recommend_category": "",
-            "recommend_difficulty": "",
-            "recommend_num": 3,
-            "add_wrong_result": None,
-            "wrong_id": "",
-            "wrong_list": get_wrong_book_list(),
-            "wrong_stats": get_wrong_book_stats(),
-            "build_index_result": None,
-        }
+        build_page_context(
+            request,
+            ask_result=result["answer"],
+            ask_query=query,
+        )
     )
-
 
 # ----------------------------
 # 网页：题目详情查询
 # ----------------------------
+
 @app.post("/page/problem", response_class=HTMLResponse)
 def page_problem(
     request: Request,
@@ -103,24 +131,12 @@ def page_problem(
 
     return templates.TemplateResponse(
         "index.html",
-        {
-            "request": request,
-            "ask_result": None,
-            "ask_query": "",
-            "problem_result": result,
-            "problem_id": problem_id,
-            "recommend_results": None,
-            "recommend_category": "",
-            "recommend_difficulty": "",
-            "recommend_num": 3,
-            "add_wrong_result": None,
-            "wrong_id": "",
-            "wrong_list": get_wrong_book_list(),
-            "wrong_stats": get_wrong_book_stats(),
-            "build_index_result": None,
-        }
+        build_page_context(
+            request,
+            problem_result=result,
+            problem_id=problem_id,
+        )
     )
-
 
 # ----------------------------
 # 网页：分类推荐
@@ -137,24 +153,14 @@ def page_recommend(
 
     return templates.TemplateResponse(
         "index.html",
-        {
-            "request": request,
-            "ask_result": None,
-            "ask_query": "",
-            "problem_result": None,
-            "problem_id": "",
-            "recommend_results": results,
-            "recommend_category": category,
-            "recommend_difficulty": difficulty,
-            "recommend_num": num,
-            "add_wrong_result": None,
-            "wrong_id": "",
-            "wrong_list": get_wrong_book_list(),
-            "wrong_stats": get_wrong_book_stats(),
-            "build_index_result": None,
-        }
+        build_page_context(
+            request,
+            recommend_results=results,
+            recommend_category=category,
+            recommend_difficulty=difficulty,
+            recommend_num=num,
+        )
     )
-
 
 # ----------------------------
 # 网页：添加错题
@@ -168,55 +174,15 @@ def page_add_wrong(
 
     return templates.TemplateResponse(
         "index.html",
-        {
-            "request": request,
-            "ask_result": None,
-            "ask_query": "",
-            "problem_result": None,
-            "problem_id": "",
-            "recommend_results": None,
-            "recommend_category": "",
-            "recommend_difficulty": "",
-            "recommend_num": 3,
-            "add_wrong_result": result,
-            "wrong_id": problem_id,
-            "wrong_list": get_wrong_book_list(),
-            "wrong_stats": get_wrong_book_stats(),
-            "build_index_result": None,
-        }
+        build_page_context(
+            request,
+            add_wrong_result=result,
+            wrong_id=problem_id,
+        )
     )
 
-
 # ----------------------------
-# 网页：构建索引
-# ----------------------------
-@app.post("/page/build_index", response_class=HTMLResponse)
-def page_build_index(request: Request):
-    result = build_faiss_index()
 
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "ask_result": None,
-            "ask_query": "",
-            "problem_result": None,
-            "problem_id": "",
-            "recommend_results": None,
-            "recommend_category": "",
-            "recommend_difficulty": "",
-            "recommend_num": 3,
-            "add_wrong_result": None,
-            "wrong_id": "",
-            "wrong_list": get_wrong_book_list(),
-            "wrong_stats": get_wrong_book_stats(),
-            "build_index_result": result["message"],
-        }
-    )
-
-
-# ----------------------------
-# API 路由（继续保留）
 # ----------------------------
 @app.get("/problem/{problem_id}")
 def get_problem(problem_id: int):

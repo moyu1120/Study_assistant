@@ -156,7 +156,8 @@
 
         input[type="text"],
         input[type="number"],
-        textarea {
+        textarea,
+        select {
             width: 100%;
             padding: 12px 14px;
             border-radius: 12px;
@@ -173,7 +174,8 @@
         }
 
         input:focus,
-        textarea:focus {
+        textarea:focus,
+        select:focus {
             border-color: #2563eb;
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
@@ -348,23 +350,25 @@
         <div class="navbar-inner">
             <div class="brand">Study Assistant</div>
             <div class="nav-links">
-                <a href="#rag">RAG 问答</a>
+                <a href="#rag">相似题检索</a>
                 <a href="#problem">题目查询</a>
                 <a href="#recommend">分类推荐</a>
                 <a href="#wrong">错题管理</a>
-                <a href="#index">索引管理</a>
-                <a href="/docs" target="_blank">API Docs</a>
             </div>
         </div>
     </div>
 
     <div class="container">
         <div class="hero">
-            <h1>本地算法学习助手</h1>
+            <h1>基于 RAG 的算法学习助手</h1>
             <p>
-                这是一个基于本地大语言模型、向量检索和 RAG 流程构建的算法学习助手。
-                当前页面集成了题意分析、题目查询、分类推荐、错题管理和索引构建等功能，
-                可以作为完整的本地 AI 学习工具 demo 使用。
+                这是一个面向算法刷题场景构建的本地学习助手。<br><br>
+                当前系统以 LeetCode Hot100 题库为核心数据源，
+                目前收录 easy 与 medium 难度题目，并支持后续继续扩展 hard 分类。<br>
+                用户可以输入一道新题的题意描述，
+                系统通过向量检索在 Hot100 中匹配相似题目，再结合本地大语言模型生成知识点判断、原因分析与练习建议，
+                帮助用户把陌生题目快速映射到高频经典题型。<br>
+                同时，系统也支持题目详情查询、分类推荐与错题统计，用于构建更完整的算法练习与复习流程。
             </p>
             <div class="hero-tags">
                 <span class="tag">Python 3.10</span>
@@ -376,12 +380,11 @@
             </div>
         </div>
 
-
         <div class="grid">
             <div class="card full" id="rag">
-                <h2>RAG 问答</h2>
+                <h2>相似题检索</h2>
                 <div class="subtext">
-                    输入题意描述，系统会先进行语义检索，再结合候选题目和本地模型生成最接近题目、知识点判断、原因分析与建议练习。
+                    输入一道题目的自然语言描述，系统会先在 LeetCode Hot100 数据集中进行语义检索，再结合候选题目与本地模型输出最相近题目、核心知识点、匹配原因与练习建议。
                 </div>
 
                 <form method="post" action="/page/ask#rag">
@@ -399,7 +402,7 @@
                         </div>
                     </div>
 
-                    <button class="btn" type="submit">开始分析</button>
+                    <button class="btn" type="submit">检索相似题</button>
                 </form>
 
                 {% if ask_result %}
@@ -419,11 +422,18 @@
             <div class="card" id="problem">
                 <h2>题目详情查询</h2>
                 <div class="subtext">
-                    按题号查看题目标题、难度、类别、描述、核心思路与代码。
+                    按题号查看题目标题、难度、类别、题目描述、核心思路与 Python 解法，便于结合相似题结果进行针对性学习。
                 </div>
                 <form method="post" action="/page/problem#problem">
-                    <label for="problem_id">题号</label>
-                    <input id="problem_id" name="problem_id" type="number" placeholder="例如 1" value="{{ problem_id }}">
+                    <label for="problem_id">题目</label>
+                    <select id="problem_id" name="problem_id">
+                        <option value="">请选择题目</option>
+                        {% for p in problems %}
+                        <option value="{{ p.id }}" {% if problem_id == p.id %}selected{% endif %}>
+                            {{ p.id }} - {{ p.title }} - {{ p.difficulty }}
+                        </option>
+                        {% endfor %}
+                    </select>
                     <button class="btn" type="submit">查询题目</button>
                 </form>
 
@@ -444,11 +454,18 @@
             <div class="card" id="recommend">
                 <h2>分类推荐</h2>
                 <div class="subtext">
-                    按类别和难度筛选题目，用于定向练习。
+                    按知识类别和难度筛选题目，支持围绕某一类高频题型进行集中练习。
                 </div>
                 <form method="post" action="/page/recommend#recommend">
                     <label for="category">类别</label>
-                    <input id="category" name="category" type="text" placeholder="例如 双指针" value="{{ recommend_category }}">
+                    <select id="category" name="category">
+                        <option value="">请选择类别</option>
+                        {% for c in categories %}
+                        <option value="{{ c }}" {% if recommend_category == c %}selected{% endif %}>
+                            {{ c }}
+                        </option>
+                        {% endfor %}
+                    </select>
 
                     <div class="row">
                         <div>
@@ -484,11 +501,18 @@
             <div class="card" id="wrong">
                 <h2>添加错题</h2>
                 <div class="subtext">
-                    输入题号，将题目加入错题本，便于后续复习。
+                    输入题号，将题目加入错题本，用于记录个人练习过程中的高频薄弱题。
                 </div>
                 <form method="post" action="/page/wrong/add#wrong">
-                    <label for="wrong_problem_id">题号</label>
-                    <input id="wrong_problem_id" name="problem_id" type="number" placeholder="例如 15" value="{{ wrong_id }}">
+                    <label for="wrong_problem_id">题目</label>
+                    <select id="wrong_problem_id" name="problem_id">
+                        <option value="">请选择题目</option>
+                        {% for p in problems %}
+                        <option value="{{ p.id }}" {% if wrong_id == p.id %}selected{% endif %}>
+                            {{ p.id }} - {{ p.title }} - {{ p.difficulty }}
+                        </option>
+                        {% endfor %}
+                    </select>
                     <button class="btn secondary" type="submit">加入错题本</button>
                 </form>
 
@@ -505,7 +529,7 @@
             <div class="card">
                 <h2>错题列表</h2>
                 <div class="subtext">
-                    当前错题本中保存的题目。
+                    当前错题本中保存的题目，可用于后续回顾与重复练习。
                 </div>
                 {% if wrong_list %}
                 <ul class="list">
@@ -526,7 +550,7 @@
             <div class="card">
                 <h2>错题统计</h2>
                 <div class="subtext">
-                    展示累计错误次数与类别分布。
+                    展示累计错误次数与类别分布，帮助用户识别当前练习中的薄弱方向。
                 </div>
                 <div class="stats">
                     <h3>总错误次数：{{ wrong_stats.total_wrong }}</h3>
@@ -541,24 +565,10 @@
                     {% endif %}
                 </div>
             </div>
-
-            <div class="card full" id="index">
-                <h2>索引管理</h2>
-                <div class="subtext">
-                    当题库数据变更后，可以手动重新构建 FAISS 向量索引。
-                </div>
-                <form method="post" action="/page/build_index#index">
-                    <button class="btn warning" type="submit">构建索引</button>
-                </form>
-
-                {% if build_index_result %}
-                <div class="result-box">{{ build_index_result }}</div>
-                {% endif %}
-            </div>
         </div>
 
         <div class="footer">
-            Study Assistant Demo · Local RAG / FastAPI / FAISS / Ollama
+            Study Assistant · 基于 LeetCode Hot100 的本地 RAG 算法学习助手
         </div>
     </div>
 </body>
